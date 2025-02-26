@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form id="downloadForm">
+        <input type="text" id="url" placeholder="YouTube URL" required>
+        <select id="formats"></select>
+        <button type="submit">Download</button>
+    </form>
+    <div id="status"></div>
+
+    <script>
+        const form = document.getElementById('downloadForm');
+        const formatSelect = document.getElementById('formats');
+        const urlInput = document.getElementById('url');
+        const statusDiv = document.getElementById('status');
+
+        // Fetch formats when URL changes
+        urlInput.addEventListener('change', async () => {
+            const url = urlInput.value;
+            try {
+                const response = await fetch(`/formats?url=${encodeURIComponent(url)}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    statusDiv.textContent = data.error;
+                    return;
+                }
+
+                formatSelect.innerHTML = data.formats.map(format => 
+                    `<option value="${format.formatId}">${format.quality} (${format.hasVideo ? 'Video' : ''}${format.hasVideo && format.hasAudio ? '+' : ''}${format.hasAudio ? 'Audio' : ''})</option>`
+                ).join('');
+            } catch (error) {
+                statusDiv.textContent = 'Error fetching formats';
+            }
+        });
+
+        // Handle form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = urlInput.value;
+            const formatId = formatSelect.value;
+
+            try {
+                statusDiv.textContent = 'Downloading...';
+                
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, formatId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.innerHTML = `Download complete! <a href="${data.downloadUrl}" download="${data.filename}">Click to download</a>`;
+                } else {
+                    statusDiv.textContent = data.error;
+                }
+            } catch (error) {
+                statusDiv.textContent = 'Error during download';
+            }
+        });
+    </script>
+</body>
+</html>
